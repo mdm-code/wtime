@@ -2,11 +2,33 @@ package main
 
 import "testing"
 
-// Check if the placeholder Greeter says hi.
-func TestGreeter(t *testing.T) {
-	want := "Hello, world!\n"
-	has := Greeter()
-	if want != has {
-		t.Errorf("want %s; has %s", want, has)
+// Unit test server setup.
+func init() {
+	sock, prot := "/tmp/wtime.test.sock", "unix"
+	serv, err := NewServer(sock, prot)
+	if err != nil {
+		return
+	}
+	// Spin up the server in a separate Goroutine to make sure test aren't
+	// blocking.
+	go func() {
+		serv.Run()
+	}()
+}
+
+// Verify server communicaton with a client.
+func TestServer(t *testing.T) {
+	_ = []struct {
+		ttype string
+		want  []byte
+	}{
+		{
+			"Making request no. 1",
+			[]byte("00:01\n"),
+		},
+		{
+			"Making request no. 2",
+			[]byte("00:02\n"),
+		},
 	}
 }
