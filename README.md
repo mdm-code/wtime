@@ -40,13 +40,20 @@ Domain Sockets (UDS). UDS-based implementation is faster and unambiguous.
 You grab a socket file and channel all the communication through this one
 file.
 
-Then you can grab its output with Netcat without any hassle or whatever:
+Then you can grab its output with `netcat` without any hassle or whatever:
 
 ```sh
 nc -U /tmp/wtime.sock
 ```
 
-And then you can put it on your Tmux status line, for example.
+Or you can put it on your `tmux` status line, for example, with this line:
+
+```
+set -g status-right "#(cat /tmp/wtime.sock) %A, %B %-e, %Y, %-l:%M:%S%p"
+```
+
+`cat` has to ability to dial in the socket in loops, so this will give you an
+alternating counter for work time and then some rest.
 
 
 ## Development setup
