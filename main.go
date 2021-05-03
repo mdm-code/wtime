@@ -117,7 +117,7 @@ loop:
 		select {
 		case <-ticker.C:
 			d -= time.Duration(TICK)
-			_, err := io.WriteString(conn, string(emoji)+" "+d.String()+"\n")
+			_, err := io.WriteString(conn, "\r"+string(emoji)+" "+d.String())
 			if err != nil {
 				break loop
 			}
