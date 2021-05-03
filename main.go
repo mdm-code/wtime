@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -29,9 +30,9 @@ params:
 
 func main() {
 	var (
-		protocol          string
-		addr              string
-		work, rest, emoji string
+		protocol           string
+		addr               string
+		work, rest, emojis string
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, USAGE)
@@ -40,8 +41,8 @@ func main() {
 	flag.StringVar(&protocol, "protocol", "unix", "server protocol")
 	flag.StringVar(&addr, "addr", SOCK, "socket address")
 	flag.StringVar(&work, "work", "25m", "time for work")
-	flag.StringVar(&rest, "rest", "5m", "time for work")
-	flag.StringVar(&emoji, "emoji", EMOJIS, "rotate these emojis")
+	flag.StringVar(&rest, "rest", "5m", "time for rest")
+	flag.StringVar(&emojis, "emoji", EMOJIS, "emojis to loop through")
 	flag.Parse()
 
 	s, err := NewServer(protocol, addr)
@@ -51,18 +52,22 @@ func main() {
 	}
 	defer s.Close()
 
-	wDur, err := time.ParseDuration(work)
+	workDur, err := time.ParseDuration(work)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "wtime: %s", err)
 		os.Exit(2)
 	}
-	rDur, err := time.ParseDuration(rest)
+	restDur, err := time.ParseDuration(rest)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "wtime: %s", err)
 		os.Exit(2)
 	}
 
-	if err := s.Run(wDur, rDur); err != nil {
+	split := []rune(emojis)
+	if l := len(split); l != 2 {
+		fmt.Fprintf(os.Stderr, "wtime: two emojis needed but %d was given", l)
+	}
+	if err := s.Run(workDur, restDur, split); err != nil {
 		fmt.Fprintf(os.Stderr, "wtime %s", err)
 	}
 }
@@ -74,7 +79,7 @@ type Server struct {
 }
 
 // Run launches the server that now listens for connections.
-func (s *Server) Run(w, r time.Duration) (err error) {
+func (s *Server) Run(work, rest time.Duration, emojis []rune) (err error) {
 	s.serv, err = net.Listen(s.protocol, s.addr)
 	for {
 		conn, err := s.serv.Accept()
@@ -86,34 +91,33 @@ func (s *Server) Run(w, r time.Duration) (err error) {
 			err = fmt.Errorf("unable to communicate")
 			break
 		}
-		go HandleConn(conn, w, r)
+		go handleConn(conn, work, rest, emojis)
 	}
 	return
 }
 
-// Close the listener server.
+// Close down the server.
 func (s *Server) Close() {
 	s.serv.Close()
 }
 
-// Transmit the message to connected client(s).
-func HandleConn(conn net.Conn, w, r time.Duration) {
+// Transmit the message to the connected client.
+func handleConn(conn net.Conn, work, rest time.Duration, emojis []rune) {
 	defer conn.Close()
-	emojis := []rune(EMOJIS)
-	countdown(conn, w, emojis[0])
-	countdown(conn, r, emojis[1])
+	countdown(conn, work, emojis[0])
+	countdown(conn, rest, emojis[1])
 }
 
-func countdown(conn net.Conn, d time.Duration, e rune) {
+// Count down
+func countdown(conn net.Conn, d time.Duration, emoji rune) {
 	timer := time.NewTimer(d)
 	ticker := time.NewTicker(TICK)
-
 loop:
 	for {
 		select {
 		case <-ticker.C:
 			d -= time.Duration(TICK)
-			_, err := io.WriteString(conn, string(e)+" "+d.String()+"\n")
+			_, err := io.WriteString(conn, "\r"+string(emoji)+" "+d.String())
 			if err != nil {
 				break loop
 			}
@@ -128,8 +132,14 @@ func NewServer(protocol, addr string) (Server, error) {
 	if err := os.RemoveAll(addr); err != nil {
 		return Server{}, err
 	}
-	return Server{
-		addr:     addr,
-		protocol: protocol,
-	}, nil
+	p := strings.ToLower(protocol)
+	// NOTE: Implement server protocols in this switch statement
+	switch p {
+	case "unix":
+		return Server{
+			addr:     addr,
+			protocol: protocol,
+		}, nil
+	}
+	return Server{}, fmt.Errorf("%s protocol not implemented", p)
 }
