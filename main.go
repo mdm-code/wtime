@@ -132,11 +132,14 @@ func NewServer(protocol, addr string) (Server, error) {
 	if err := os.RemoveAll(addr); err != nil {
 		return Server{}, err
 	}
-	if p := strings.ToLower(protocol); p != "unix" {
-		return Server{}, fmt.Errorf("%s protocol not implemented", p)
+	p := strings.ToLower(protocol)
+	// NOTE: Implement server protocols in this switch statement
+	switch p {
+	case "unix":
+		return Server{
+			addr:     addr,
+			protocol: protocol,
+		}, nil
 	}
-	return Server{
-		addr:     addr,
-		protocol: protocol,
-	}, nil
+	return Server{}, fmt.Errorf("%s protocol not implemented", p)
 }
