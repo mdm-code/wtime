@@ -58,11 +58,11 @@ nc -U /tmp/wtime.sock
 Or you can put it on your `tmux` status line, for example, with this line:
 
 ```
-set -g status-right "#(cat /tmp/wtime.sock) %A, %B %-e, %Y, %-l:%M:%S%p"
+set -g status-right "#(nc -U /tmp/wtime.sock) %A, %B %-e, %Y, %-l:%M:%S%p"
 ```
 
-You can use some of that `cat` magic and dial in to the socket in loops to get
-a counter for work time followed by a moment of respite.
+You can try and use some of that `cat` magic and dial in to the socket in
+loops to get a counter for work time followed by a moment of respite.
 
 
 ## Development setup
